@@ -1,0 +1,8 @@
+# macOS Finder metadata
+.DS_Store
+
+# Rust build output
+/src-tauri/target/
+
+# Tauri-generated schemas
+/src-tauri/gen/schemas/

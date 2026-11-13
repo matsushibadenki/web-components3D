@@ -1,0 +1,5 @@
+{
+  "identifier": "rack",
+  "windows": ["main", "drive", "adv", "eq"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

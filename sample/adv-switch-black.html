@@ -1,0 +1,417 @@
+<!-- /adv-switch-threejs/adv-switch-black.html -->
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#292d33"/>
+  <title>ADV — Black Three.js Switch</title>
+  <style>/* /adv-switch-threejs/src/switch.css */
+:root { color-scheme: light; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin:0; min-height:100%; }
+body {
+  --panel-top: #edf0f2;
+  --panel-bottom: #cfd4d8;
+  --panel-border: rgba(66, 74, 83, .13);
+  --panel-shadow: rgba(17, 22, 28, .13);
+  --label-color: #1c2228;
+  --track-outline: #7f8991;
+  --track-base: #202329;
+  --track-shade: #111216;
+  --thumb-top: #ffffff;
+  --thumb-middle: #f0f2f2;
+  --thumb-bottom: #c5cbd0;
+  --thumb-edge: #7c858e;
+  --fallback-shadow: rgba(2, 4, 7, .45);
+  --outline: rgba(68, 102, 141, .7);
+  background: #e9ecef;
+  color: var(--label-color);
+  font-family: Arial, Helvetica, sans-serif;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+body[data-theme="black"] {
+  color-scheme: dark;
+  --panel-top: #383d43;
+  --panel-bottom: #22262c;
+  --panel-border: rgba(221, 227, 234, .10);
+  --panel-shadow: rgba(0, 0, 0, .42);
+  --label-color: #f0f3f5;
+  --track-outline: #707880;
+  --track-base: #13161b;
+  --track-shade: #080a0d;
+  --thumb-top: #f8fafb;
+  --thumb-middle: #dfe3e6;
+  --thumb-bottom: #aeb7c0;
+  --thumb-edge: #616b76;
+  --fallback-shadow: rgba(0, 0, 0, .72);
+  --outline: rgba(194, 209, 228, .75);
+  background: #181b20;
+}
+.product {
+  width: 280px;
+  max-width: calc(100vw - 20px);
+  aspect-ratio: 280 / 96;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--panel-border);
+  background: linear-gradient(152deg, var(--panel-top), var(--panel-bottom));
+  box-shadow: 0 9px 30px var(--panel-shadow), inset 0 1px rgba(255,255,255,.16);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.product::before {
+  content: '';
+  position:absolute;
+  inset:0;
+  z-index:0;
+  opacity:.20;
+  pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.22' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+.product::after {
+  content: '';
+  position:absolute;
+  z-index:0;
+  inset:0;
+  pointer-events:none;
+  background: radial-gradient(ellipse at 30% 10%, rgba(255,255,255,.21), transparent 65%);
+}
+.wordmark {
+  position: absolute;
+  z-index:4;
+  left: 10%; top: 50%;
+  transform: translateY(-51%);
+  font: 800 7.5cqw/1 Arial, Helvetica, sans-serif;
+  letter-spacing: -.033em;
+  color: var(--label-color);
+  text-shadow: 0 1px rgba(255,255,255,.14);
+  white-space: nowrap;
+  pointer-events:none;
+}
+.product { container-type: inline-size; }
+.webgl { position:absolute; inset:0; z-index:2; pointer-events:none; }
+.webgl canvas { display:block; height:100%; width:100%; }
+.fallback-track {
+  position:absolute; left: 36.1%; top: 21.9%;
+  width: 38.6%; height: 56.2%;
+  z-index:1;
+  border-radius: 999px;
+  border: 1px solid var(--track-outline);
+  background: linear-gradient(160deg, var(--track-shade), var(--track-base) 39%, #2c3037 95%);
+  box-shadow:
+    0 2px 5px var(--fallback-shadow),
+    inset 0 3px 7px rgba(0,0,0,.70),
+    inset 0 -2px 2px rgba(255,255,255,.08),
+    0 -1px 1px rgba(255,255,255,.60);
+  pointer-events:none;
+}
+body[data-theme="black"] .fallback-track { box-shadow: 0 3px 9px var(--fallback-shadow), inset 0 4px 7px rgba(0,0,0,.82), inset 0 -1px 2px rgba(255,255,255,.10), 0 -1px 1px rgba(255,255,255,.14); }
+.fallback-thumb {
+  position:absolute; top: 5%; left: 3.4%;
+  width: 45.5%; height: 90%;
+  border-radius:999px;
+  border: 1px solid var(--thumb-edge);
+  background: linear-gradient(152deg, var(--thumb-top) 0%, var(--thumb-middle) 60%, var(--thumb-bottom) 100%);
+  box-shadow:
+    1px 2px 4px rgba(0,0,0,.58),
+    inset 1px 2px 3px rgba(255,255,255,.86),
+    inset -2px -2px 3px rgba(44,48,52,.18);
+  transform: translateX(0);
+  transition: transform .22s cubic-bezier(.2,.83,.21,1);
+}
+.product[data-on="true"] .fallback-thumb { transform: translateX(103%); }
+.product.three-ready .fallback-track { visibility: hidden; }
+.hit {
+  position:absolute;
+  z-index:5;
+  left: 35.1%; top:18%;
+  width: 40.6%; height: 64%;
+  border:0;
+  border-radius:999px;
+  background:none;
+  color:transparent;
+  cursor:pointer;
+  touch-action:none;
+  -webkit-tap-highlight-color: transparent;
+}
+.hit:focus { outline: none; }
+.hit:focus-visible { outline: 1.5px solid var(--outline); outline-offset: 0; }
+@media(prefers-reduced-motion: reduce) { .fallback-thumb { transition:none; } }
+</style>
+</head>
+<body data-theme="black">
+  <main class="product" data-on="true" aria-label="ADVスイッチ">
+    <span class="wordmark" aria-hidden="true">ADV</span>
+    <div class="fallback-track" aria-hidden="true"><div class="fallback-thumb"></div></div>
+    <div class="webgl" aria-hidden="true"></div>
+    <button class="hit" type="button" role="switch" aria-label="ADV" aria-checked="true"></button>
+  </main>
+  <script>// /adv-switch-threejs/src/controller.js
+(() => {
+  'use strict';
+  const panel = document.querySelector('.product');
+  const hit = document.querySelector('.hit');
+  let on = panel.dataset.on !== 'false';
+  let dragged = false;
+  let startX = 0;
+  let pointerActive = false;
+
+  function setEnabled(next, emit = true) {
+    const newValue = Boolean(next);
+    const changed = newValue !== on;
+    on = newValue;
+    panel.dataset.on = String(on);
+    hit.setAttribute('aria-checked', String(on));
+    if (changed && emit) {
+      document.dispatchEvent(new CustomEvent('advchange', { detail: { enabled: on } }));
+    }
+    if (changed || !emit) window.dispatchEvent(new CustomEvent('adv-render', { detail: { enabled: on, immediate: !emit } }));
+  }
+  function atPosition(e) {
+    const box = hit.getBoundingClientRect();
+    return e.clientX >= box.left + box.width / 2;
+  }
+  hit.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pointerActive = true;
+    dragged = false;
+    startX = e.clientX;
+    hit.setPointerCapture(e.pointerId);
+    hit.focus({ preventScroll: true });
+  });
+  hit.addEventListener('pointermove', e => {
+    if (!pointerActive) return;
+    if (Math.abs(e.clientX - startX) >= 5) dragged = true;
+    if (dragged) setEnabled(atPosition(e));
+  });
+  hit.addEventListener('pointerup', e => {
+    if (!pointerActive) return;
+    pointerActive = false;
+    if (!dragged) setEnabled(!on);
+    else setEnabled(atPosition(e));
+  });
+  hit.addEventListener('pointercancel', () => { pointerActive = false; });
+  hit.addEventListener('lostpointercapture', () => { pointerActive = false; });
+  hit.addEventListener('click', e => {
+    // Keyboard-generated clicks have detail === 0; pointer clicks were handled above.
+    if (e.detail === 0) setEnabled(!on);
+  });
+  window.AdvSwitch = Object.freeze({
+    getValue: () => on,
+    setValue: value => setEnabled(value),
+    onChange: callback => {
+      const listener = e => callback(e.detail.enabled);
+      document.addEventListener('advchange', listener);
+      return () => document.removeEventListener('advchange', listener);
+    },
+  });
+  setEnabled(on, false);
+})();
+</script>
+  <script type="module">// /adv-switch-threejs/src/three-renderer.js
+(async () => {
+  'use strict';
+  const host = document.querySelector('.webgl');
+  const panel = document.querySelector('.product');
+  const BLACK = document.body.dataset.theme === 'black';
+  let THREE;
+  try {
+    THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js');
+  } catch (e) {
+    // Offline or blocked CDN: the responsive CSS fallback remains operable.
+    return;
+  }
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
+  } catch (e) { return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x000000, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = BLACK ? 1.35 : 1.36;
+  host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-140, 140, 48, -48, 0.1, 400);
+  camera.position.set(0, 0, 180);
+  camera.lookAt(0, 0, 0);
+  const ambient = new THREE.HemisphereLight(0xffffff, BLACK ? 0x58606a : 0xabb4bf, BLACK ? 1.75 : 1.95);
+  scene.add(ambient);
+  const key = new THREE.DirectionalLight(0xffffff, BLACK ? 3.0 : 2.35);
+  key.position.set(-38, 78, 90);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xcedae9, .74);
+  fill.position.set(85, -60, 55);
+  scene.add(fill);
+
+  function capsule(w, h) {
+    const r = h * .5;
+    const s = new THREE.Shape();
+    s.moveTo(-w/2+r, -h/2);
+    s.lineTo(w/2-r, -h/2);
+    s.absarc(w/2-r, 0, r, -Math.PI/2, Math.PI/2, false);
+    s.lineTo(-w/2+r, h/2);
+    s.absarc(-w/2+r, 0, r, Math.PI/2, 3*Math.PI/2, false);
+    s.closePath();
+    return s;
+  }
+  function mesh(w, h, material, z, depth, bevel=0.3) {
+    const geometry = new THREE.ExtrudeGeometry(capsule(w,h), {
+      depth, bevelEnabled: true, bevelSegments: 5, curveSegments: 24,
+      steps: 1, bevelThickness: bevel, bevelSize: bevel,
+    });
+    const item = new THREE.Mesh(geometry, material);
+    item.position.z = z;
+    return item;
+  }
+  function surfaceTexture(kind) {
+    const canvas = document.createElement('canvas');
+    canvas.width=512; canvas.height=kind === 'thumb' ? 512 : 256;
+    const g = canvas.getContext('2d');
+    g.save();
+    const ch = canvas.height;
+    g.beginPath(); g.roundRect(2,2,508,ch-4,(ch-4)/2); g.clip();
+    const grad = g.createLinearGradient(0,0,64,ch);
+    if (kind === 'track') {
+      grad.addColorStop(0, BLACK ? '#050608' : '#101115');
+      grad.addColorStop(.17, '#17191d');
+      grad.addColorStop(.56, '#24262b');
+      grad.addColorStop(1, '#17191e');
+    } else {
+      grad.addColorStop(0, BLACK ? '#ffffff' : '#ffffff');
+      grad.addColorStop(.30, BLACK ? '#f5f7f8' : '#fdfefe');
+      grad.addColorStop(.72, BLACK ? '#e2e7eb' : '#ebeff1');
+      grad.addColorStop(1, BLACK ? '#b6bec5' : '#c1c7cb');
+    }
+    g.fillStyle=grad; g.fillRect(0,0,512,ch);
+    const vignette = g.createRadialGradient(130,30,10,245,ch/2,440);
+    vignette.addColorStop(0,'rgba(255,255,255,.095)');
+    vignette.addColorStop(1,kind==='track'?'rgba(0,0,0,.26)':'rgba(0,0,0,.07)');
+    g.fillStyle=vignette;g.fillRect(0,0,512,ch);
+    // Deterministic matte micrograin rather than a pristine computer-graphic surface.
+    let seed = 9049;
+    for(let i=0;i<4000;i++) {
+      seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+      const x=seed%512; seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+      const y=seed%ch;
+      g.fillStyle=(i%2?'rgba(255,255,255,.035)':'rgba(0,0,0,.028)');
+      g.fillRect(x,y,1,1);
+    }
+    g.restore();
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+    return texture;
+  }
+  function shadowTexture() {
+    const c = document.createElement('canvas');c.width=256;c.height=160;
+    const g=c.getContext('2d');
+    g.filter='blur(15px)';
+    g.fillStyle='rgba(0,0,0,.58)';
+    g.beginPath();g.roundRect(45,34,166,94,47);g.fill();
+    return new THREE.CanvasTexture(c);
+  }
+  const trackGroup = new THREE.Group();
+  trackGroup.position.set(14, 0, 0);
+  scene.add(trackGroup);
+  const panelShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(146, 83),
+    new THREE.MeshBasicMaterial({map:shadowTexture(),transparent:true,depthWrite:false,opacity:BLACK?.65:.42,toneMapped:false})
+  );
+  panelShadow.position.set(2,-2,-2);
+  trackGroup.add(panelShadow);
+  const bezel = new THREE.MeshPhysicalMaterial({
+    color: BLACK ? 0x5e666e : 0x89949b,
+    metalness: .25, roughness: .35, clearcoat: .4, clearcoatRoughness: .35,
+  });
+  trackGroup.add(mesh(110,56,bezel,0,1.1,.7));
+  const cavity = new THREE.MeshStandardMaterial({
+    color: 0x15171b, metalness: .06, roughness: .67,
+  });
+  trackGroup.add(mesh(106.8,53,cavity,1.5,.7,.3));
+  const trackFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(104.6,50.8),
+    new THREE.MeshBasicMaterial({map:surfaceTexture('track'),transparent:true,depthWrite:false,toneMapped:false})
+  );
+  trackFace.position.z=2.65;
+  trackGroup.add(trackFace);
+  // A gentle non-emissive inner rim only on top and left.
+  const reflectiveEdge = mesh(105.0,50.6,new THREE.MeshStandardMaterial({
+    color:BLACK?0x353b42:0x3b4248,metalness:.22,roughness:.67,
+  }), 2.15,.15,.1);
+  // Keep the rim under the textured inset plane so it does not look like a second track.
+  trackGroup.add(reflectiveEdge);
+
+  const thumbGroup = new THREE.Group();
+  trackGroup.add(thumbGroup);
+  const thumbShadow = new THREE.Mesh(new THREE.PlaneGeometry(66,59),new THREE.MeshBasicMaterial({
+    map:shadowTexture(), transparent:true, opacity:.8, depthWrite:false,toneMapped:false,
+  }));
+  thumbShadow.position.set(1,-2,2.9);
+  thumbGroup.add(thumbShadow);
+  const thumbSide = new THREE.MeshPhysicalMaterial({
+    color: BLACK ? 0xbec7ce : 0xc7cdd2,
+    metalness: .04, roughness:.46,clearcoat:.30,clearcoatRoughness:.44,
+  });
+  thumbGroup.add(mesh(47,45,thumbSide,3.35,2.6,1.1));
+  const thumbFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(45.4,43.4),
+    new THREE.MeshStandardMaterial({map:surfaceTexture('thumb'),transparent:true,metalness:0,roughness:.7,depthWrite:false})
+  );
+  thumbFace.position.z=7.55;
+  thumbGroup.add(thumbFace);
+
+  let enabled = panel.dataset.on !== 'false';
+  const L=-26.5, R=26.5;
+  let current = enabled ? R : L;
+  let target = current;
+  let moving = false;
+  let raf=0;
+  thumbGroup.position.x=current;
+  function render() { renderer.render(scene,camera); }
+  function advance() {
+    raf=0;
+    current += (target-current)*.235;
+    if(Math.abs(target-current)<.05) {current=target;moving=false;}
+    thumbGroup.position.x=current;
+    render();
+    if(moving) raf=requestAnimationFrame(advance);
+  }
+  window.addEventListener('adv-render', e=>{
+    target=e.detail.enabled ? R : L;
+    if(e.detail.immediate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      current=target;thumbGroup.position.x=current;moving=false;
+      if(raf) cancelAnimationFrame(raf);
+      raf=0;render();
+    } else if(!moving) {moving=true;raf=requestAnimationFrame(advance);}
+  });
+  function resize() {
+    const w=host.clientWidth, h=host.clientHeight;
+    if(!w||!h) return;
+    renderer.setSize(w,h,false);
+    const halfW = (48*w/h);
+    camera.left=-halfW;camera.right=halfW;
+    camera.top=48;camera.bottom=-48;
+    camera.updateProjectionMatrix();
+    render();
+  }
+  const observer = new ResizeObserver(resize);
+  observer.observe(host);
+  resize();
+  panel.classList.add('three-ready');
+  window.addEventListener('pagehide',()=>{
+    observer.disconnect();
+    if(raf) cancelAnimationFrame(raf);
+    renderer.dispose();
+  },{once:true});
+})();
+</script>
+</body>
+</html>

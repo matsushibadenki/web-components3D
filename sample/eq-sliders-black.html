@@ -1,0 +1,286 @@
+<!-- /eq-sliders-themes/eq-sliders-black.html -->
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#25292e">
+  <title>EQ Sliders / Black / Three.js</title>
+  <style>
+    /* /eq-sliders-themes/eq-sliders-black.html : layout and control hit regions */
+    :root { color-scheme: dark; font-family: Arial, Helvetica, sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; min-height: 100svh; padding: 18px; display: grid; place-items: center; background: #191c20; }
+    .panel {
+      position: relative; width: min(300px, calc(100vw - 36px)); aspect-ratio: 300 / 365;
+      overflow: hidden; isolation: isolate; contain: layout paint;
+      background: linear-gradient(145deg, #30343a 0%, #282c31 49%, #202329 100%);
+      box-shadow: 0 15px 38px #00000066, inset 0 0 1px #ffffff17;
+      user-select: none; -webkit-user-select: none;
+      touch-action: none; container-type: inline-size;
+    }
+    .grain { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .10;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 110'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
+    }
+    #webgl, #fallback { position: absolute; inset: 0; pointer-events: none; }
+    #webgl { z-index: 2; }
+    #webgl canvas { display: block; width: 100%; height: 100%; }
+    #fallback { z-index: 1; }
+    .panel.webgl-ready #fallback { display: none; }
+    .name, .frequency, .lowcut-label { position: absolute; z-index: 4; color: #e5e8ec; text-align: center; white-space: nowrap; pointer-events: none; }
+    .name { width: 18%; transform: translateX(-50%); top: 54.7%; font-size: clamp(10px, 4.45vw, 13px); font-size: min(13px, 4.3cqw); line-height: 1; font-weight: 500; }
+    .frequency { left: 50%; transform: translateX(-50%); top: 70.8%; font-size: min(23px, 7.7cqw); line-height: 1.1; font-weight: 700; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+    .lowcut-label { left: 50%; transform: translateX(-50%); top: 91.2%; font-size: min(13px, 4.35cqw); line-height: 1; font-weight: 500; }
+    .control {
+      position: absolute; z-index: 5; margin: 0; padding: 0; border: 0;
+      border-radius: 0; appearance: none; -webkit-appearance: none;
+      background: none; box-shadow: none; outline: none;
+      touch-action: none; cursor: ns-resize;
+    }
+    .control.horizontal { cursor: ew-resize; }
+    /* Keyboard focus feedback is small and local, never a big box around the rail. */
+    .control:focus-visible::after {
+      content: ''; position: absolute; left: 50%; top: calc((1 - var(--v)) * 100%);
+      width: 5px; height: 5px; border-radius: 50%; transform: translate(-50%, -50%);
+      background: #4e7bba; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px #4e7bba;
+    }
+    .control.horizontal:focus-visible::after { left: calc(var(--v) * 100%); top: 50%; }
+    /* CSS fallback matches the THREE geometry / design coordinates. */
+    .fb-rail { position: absolute; width: 4px; border-radius: 2px; background: linear-gradient(90deg,#555b64,#777f89,#505760); }
+    .fb-line { position: absolute; width: 2px; background: #d0d6dd; }
+    .fb-hrail { position: absolute; height: 5px; border-radius: 4px; background: linear-gradient(#4b5159,#727982,#494e56); }
+    .fb-thumb {
+      position: absolute; border: 1px solid #525b65; border-radius: 11px;
+      background: linear-gradient(145deg,#464d55 6%,#353a42 55%,#24282e 100%);
+      box-shadow: 1px 3px 7px #00000088, -1px -1px 2px #ffffff19, inset 0 1px 2px #ffffff2b;
+    }
+    .fb-thumb::after {
+      content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: 72%; height: 7px; border-radius: 4px; background: #e4e8ec;
+      box-shadow: inset 0 1px 1px #ffffff49, 0 1px 1px #00000078;
+    }
+  </style>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
+</head>
+<body>
+  <main class="panel" id="panel" aria-label="4-band equalizer and low-cut frequency">
+    <div class="grain" aria-hidden="true"></div>
+    <div id="fallback" aria-hidden="true"></div>
+    <div id="webgl" aria-hidden="true"></div>
+    <span class="name" style="left:15.333%">Low</span>
+    <span class="name" style="left:38.333%">Mid</span>
+    <span class="name" style="left:61.333%">High</span>
+    <span class="name" style="left:84.333%">Air</span>
+    <output class="frequency" id="frequency" aria-live="off">263</output>
+    <span class="lowcut-label">Low-Cut</span>
+  </main>
+  <script>
+    // /eq-sliders-themes/eq-sliders-black.html : shared pixel-space geometry and interactions
+    (() => {
+      'use strict';
+      const W = 300, H = 365;
+      const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
+      const config = [
+        { id:'low', label:'Low', axis:'y', x:46, top:24, bottom:186, value:43 },
+        { id:'mid', label:'Mid', axis:'y', x:115, top:24, bottom:186, value:65 },
+        { id:'high', label:'High', axis:'y', x:184, top:24, bottom:186, value:43 },
+        { id:'air', label:'Air', axis:'y', x:253, top:24, bottom:186, value:29 },
+        { id:'lowcut', label:'Low-Cut', axis:'x', left:36, right:264, y:309, value:50 }
+      ];
+      const panel = document.querySelector('#panel');
+      const fallback = document.querySelector('#fallback');
+      const freq = document.querySelector('#frequency');
+      const node = (tag, cls, css) => {
+        const el = document.createElement(tag); el.className=cls;
+        Object.assign(el.style, css); return el;
+      };
+      const pX = n => (n/W*100)+'%';
+      const pY = n => (n/H*100)+'%';
+      const handleY = c => c.bottom-(c.bottom-c.top)*c.value/100;
+      const handleX = c => c.left+(c.right-c.left)*c.value/100;
+      const fallbackRefs = new Map();
+      for (const c of config) {
+        const control = node('div', 'control'+(c.axis==='x'?' horizontal':''), {});
+        control.dataset.slider=c.id; control.tabIndex=0; control.setAttribute('role','slider');
+        control.setAttribute('aria-label', c.label); control.setAttribute('aria-valuemin','0'); control.setAttribute('aria-valuemax','100');
+        const hit = c.axis==='y' ?
+          {left:pX(c.x-20),top:pY(c.top),width:pX(40),height:pY(c.bottom-c.top)} :
+          {left:pX(c.left),top:pY(c.y-16),width:pX(c.right-c.left),height:pY(32)};
+        Object.assign(control.style,hit);
+        panel.appendChild(control); c.control=control;
+        if (c.axis==='y') {
+          const rail = node('div','fb-rail',{left:pX(c.x-2),top:pY(c.top),height:pY(c.bottom-c.top)});
+          const line = node('div','fb-line',{left:pX(c.x-1)});
+          const thumb=node('div','fb-thumb',{width:pX(36),height:pY(19)});
+          fallback.append(rail,line,thumb); fallbackRefs.set(c.id,{line,thumb});
+        } else {
+          const rail=node('div','fb-hrail',{left:pX(c.left),top:pY(c.y-2.5),width:pX(c.right-c.left)});
+          // Low-Cut grip: 31px wide in both CSS fallback and Three.js.
+          const thumb=node('div','fb-thumb',{width:pX(31),height:pY(20)});
+          fallback.append(rail,thumb); fallbackRefs.set(c.id,{thumb});
+        }
+      }
+      function refresh() {
+        for(const c of config){
+          c.control.setAttribute('aria-valuenow',String(Math.round(c.value)));
+          c.control.style.setProperty('--v',String(c.value/100));
+          const f=fallbackRefs.get(c.id);
+          if(c.axis==='y') {
+            const y=handleY(c);
+            Object.assign(f.line.style,{top:pY(y),height:pY(c.bottom-y)});
+            Object.assign(f.thumb.style,{left:pX(c.x-18),top:pY(y-9.5)});
+          } else {
+            Object.assign(f.thumb.style,{left:pX(handleX(c)-15.5),top:pY(c.y-10)});
+          }
+        }
+        const v=config.find(c=>c.id==='lowcut').value;
+        freq.value=String(Math.round(26+v/100*474));
+        if(typeof window.__eqRender==='function') window.__eqRender(config);
+      }
+      function change(c,v){
+        c.value=clamp(v,0,100); refresh();
+        window.dispatchEvent(new CustomEvent('eqchange',{detail:Object.fromEntries(config.map(s=>[s.id,s.value]))}));
+      }
+      let active=null;
+      function positionValue(c,e){
+        const r=panel.getBoundingClientRect();
+        const x=(e.clientX-r.left)/r.width*W;
+        const y=(e.clientY-r.top)/r.height*H;
+        return c.axis==='y' ? (c.bottom-y)/(c.bottom-c.top)*100 : (x-c.left)/(c.right-c.left)*100;
+      }
+      for(const c of config){
+        const el=c.control;
+        el.addEventListener('pointerdown',e=>{
+          if(e.pointerType==='mouse' && e.button!==0) return;
+          active=c; el.setPointerCapture(e.pointerId); change(c,positionValue(c,e));
+        });
+        el.addEventListener('pointermove',e=>{if(active===c)change(c,positionValue(c,e));});
+        const end=()=>{if(active===c)active=null;};
+        el.addEventListener('pointerup',end);
+        el.addEventListener('pointercancel',end);
+        el.addEventListener('lostpointercapture',end);
+        el.addEventListener('keydown',e=>{
+          let d=0;
+          if(e.key==='Home'){change(c,0);e.preventDefault();return;}
+          if(e.key==='End'){change(c,100);e.preventDefault();return;}
+          if(e.key==='PageUp')d=10;
+          else if(e.key==='PageDown')d=-10;
+          else if(e.key===(c.axis==='y'?'ArrowUp':'ArrowRight'))d=1;
+          else if(e.key===(c.axis==='y'?'ArrowDown':'ArrowLeft'))d=-1;
+          if(d){change(c,c.value+d);e.preventDefault();}
+        });
+      }
+      window.EQSliders={
+        getValues:()=>Object.fromEntries(config.map(c=>[c.id,c.value])),
+        setValue:(id,v)=>{const c=config.find(x=>x.id===id);if(c&&Number.isFinite(Number(v)))change(c,Number(v));}
+      };
+      window.__eqConfig=config;
+      refresh();
+    })();
+  </script>
+  <script type="module">
+    // /eq-sliders-themes/eq-sliders-black.html : Three.js renderer; 300 x 365 shared design coordinate system
+    import * as THREE from 'three';
+    const W=300,H=365;
+    const panel=document.querySelector('#panel');
+    const mount=document.querySelector('#webgl');
+    let renderer;
+    try { renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'}); }
+    catch(err) { console.warn('3D unavailable: CSS fallback stays active.',err); }
+    if(renderer){
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+      renderer.outputColorSpace=THREE.SRGBColorSpace;
+      renderer.toneMapping=THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure=1.35;
+      mount.appendChild(renderer.domElement);
+      const scene=new THREE.Scene();
+      const camera=new THREE.OrthographicCamera(0,W,H,0,.1,200);
+      camera.position.set(0,0,100); camera.lookAt(0,0,0);
+      scene.add(new THREE.HemisphereLight(0xffffff,0x191c22,1.5));
+      const key=new THREE.DirectionalLight(0xffffff,2.1); key.position.set(-90,140,120);scene.add(key);
+      const fill=new THREE.DirectionalLight(0xc2ceda,.38);fill.position.set(210,-20,90);scene.add(fill);
+      const pale=new THREE.MeshPhysicalMaterial({color:0x343a42,metalness:0,roughness:.78,clearcoat:.12,clearcoatRoughness:.86});
+      const edgeMat=new THREE.MeshStandardMaterial({color:0x515964,roughness:.88});
+      const paleRail=new THREE.MeshStandardMaterial({color:0x66707a,roughness:.94});
+      const darkRail=new THREE.MeshStandardMaterial({color:0xc5ccd3,roughness:.92});
+      const black=new THREE.MeshStandardMaterial({color:0xe3e7eb,roughness:.83,metalness:.01});
+      const lip=new THREE.MeshStandardMaterial({color:0x262c34,roughness:.92});
+      const shadowCanvas=document.createElement('canvas');shadowCanvas.width=128;shadowCanvas.height=64;
+      const g=shadowCanvas.getContext('2d'), grad=g.createRadialGradient(64,32,4,64,32,58);
+      grad.addColorStop(0,'rgba(0,0,0,.6)');grad.addColorStop(.40,'rgba(0,0,0,.28)');grad.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=grad;g.fillRect(0,0,128,64);
+      const shadowTex=new THREE.CanvasTexture(shadowCanvas);
+      const shadowMat=new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,depthWrite:false,toneMapped:false,opacity:.94});
+      const rounded=(w,h,r)=>{
+        const s=new THREE.Shape(),x=-w/2,y=-h/2;
+        s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);
+        s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+        s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);
+        s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s;
+      };
+      const bevel=(w,h,r,depth,bSize)=>new THREE.ExtrudeGeometry(rounded(w,h,r),{
+        depth,bevelEnabled:true,bevelThickness:bSize,bevelSize:bSize,bevelSegments:4,curveSegments:9,steps:1
+      });
+      const box=(w,h,z,mat)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,z),mat);
+      const Y=y=>H-y;
+      function handle(width,height){
+        const group=new THREE.Group();
+        const shade=new THREE.Mesh(new THREE.PlaneGeometry(width*1.65,height*2.2),shadowMat);
+        shade.position.set(2,-3,.1);group.add(shade);
+        const under=new THREE.Mesh(bevel(width,height,height*.43,1.5,.8),edgeMat);
+        under.position.z=1.0;group.add(under);
+        const body=new THREE.Mesh(bevel(width-2,height-2,(height-2)*.45,3.0,1.3),pale);
+        body.position.z=3.0;group.add(body);
+        const surround=new THREE.Mesh(bevel(width*.73,8.8,3.9,.22,.25),lip);
+        surround.position.z=9.1;group.add(surround);
+        const slot=new THREE.Mesh(bevel(width*.69,6.3,3.0,.22,.18),black);
+        slot.position.z=9.8;group.add(slot);
+        return group;
+      }
+      const refs={};
+      for(const c of window.__eqConfig){
+        const group=new THREE.Group();scene.add(group);
+        if(c.axis==='y'){
+          const base=box(4.6,c.bottom-c.top,1,paleRail);
+          base.position.set(c.x,Y((c.bottom+c.top)/2),.25);group.add(base);
+          const filled=box(2.4,1,.65,darkRail);filled.position.z=1.5;group.add(filled);
+          const grip=handle(36,19);grip.position.z=1;group.add(grip);
+          refs[c.id]={group,filled,grip};
+        } else {
+          const base=box(c.right-c.left,5,1,paleRail);base.position.set((c.left+c.right)/2,Y(c.y),.25);group.add(base);
+          const line=box(c.right-c.left,1,0.3,paleRail);line.position.set((c.left+c.right)/2,Y(c.y)+.2,1.3);group.add(line);
+          const grip=handle(31,20);grip.position.z=1;group.add(grip);
+          refs[c.id]={group,grip};
+        }
+      }
+      function redraw(config=window.__eqConfig){
+        for(const c of config){
+          const r=refs[c.id];
+          if(c.axis==='y'){
+            const cy=c.bottom-(c.bottom-c.top)*c.value/100;
+            r.grip.position.set(c.x,Y(cy),1);
+            const len=Math.max(.1,c.bottom-cy);
+            r.filled.scale.y=len;
+            r.filled.position.set(c.x,Y((c.bottom+cy)/2),1.4);
+          } else {
+            const cx=c.left+(c.right-c.left)*c.value/100;
+            r.grip.position.set(cx,Y(c.y),1);
+          }
+        }
+        renderer.render(scene,camera);
+      }
+      function resize(){
+        const w=panel.clientWidth,h=panel.clientHeight;if(w<=0||h<=0)return;
+        renderer.setSize(w,h,false);
+        camera.left=0;camera.right=W;camera.top=H;camera.bottom=0;camera.updateProjectionMatrix();
+        redraw();
+      }
+      window.__eqRender=redraw;
+      const observer=new ResizeObserver(resize);observer.observe(panel);
+      resize();
+      panel.classList.add('webgl-ready');
+      window.addEventListener('pagehide',()=>{observer.disconnect();renderer.dispose();},{once:true});
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-theme="black">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alloy</title>
+  <link rel="stylesheet" href="alloy.css">
+  <link rel="stylesheet" href="demo.css">
+  <script type="module" src="demo.js"></script>
+</head>
+<body>
+  <main class="console">
+    <header class="toolbar">
+      <h1>Alloy</h1>
+      <div class="tools">
+        <button id="theme" class="icon" type="button">◐</button>
+        <select id="language">
+          <option value="en">EN</option>
+          <option value="ja">日本語</option>
+          <option value="zh-CN">简中</option>
+        </select>
+      </div>
+    </header>
+    <div id="racks">
+      <section>
+        <h2 class="variant-title" id="alloy-title"></h2>
+        <div id="rack" class="rack" data-density="compact" aria-labelledby="alloy-title"></div>
+      </section>
+      <section id="simple">
+        <h2 class="variant-title" id="simple-title"></h2>
+        <div id="simple-rack" class="rack" data-density="compact" data-variant="simple" aria-labelledby="simple-title"></div>
+      </section>
+      <section id="synth">
+        <h2 class="variant-title" id="synth-title">Synth</h2>
+        <div id="synth-rack" class="rack" data-density="compact" data-variant="synth" aria-labelledby="synth-title"></div>
+      </section>
+    </div>
+    <section id="sample-gallery" hidden>
+      <select id="sample-design"></select>
+      <iframe id="sample-preview" sandbox="allow-scripts"></iframe>
+    </section>
+    <p id="error" role="alert" hidden></p>
+  </main>
+</body>
+</html>

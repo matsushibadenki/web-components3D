@@ -1,0 +1,412 @@
+/* Hallmark · pre-emit critique: P5 H4 E4 S5 R5 V4 */
+:root {
+  color-scheme: dark;
+  --ui: system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --desk: #14171a;
+  --chassis: #22262b;
+  --panel-top: #343a40;
+  --panel-bottom: #22262b;
+  --rim: #596167;
+  --edge: #101215;
+  --text: #eff0ee;
+  --muted: #c1c7ca;
+  --mark: #7c858a;
+  --accent: #ffb56c;
+  --light: #ffffff38;
+  --glint: #ffffff08;
+  --shade: #00000048;
+  --shadow: #000000a3;
+  --well: #121519;
+  --dial: radial-gradient(circle at 28% 24%, #656d73, #3c4247 38%, #1b1f23 100%);
+  --cap: linear-gradient(135deg, #737b80, #383e43 44%, #292e34 55%, #464e54);
+  --rocker: linear-gradient(150deg, #858d92, #3a4147 39%, #24292e 52%, #393f44);
+}
+:root[data-theme="white"] {
+  color-scheme: light;
+  --desk: #d4d8da;
+  --chassis: #e3e6e6;
+  --panel-top: #f5f6f5;
+  --panel-bottom: #dce0e1;
+  --rim: #fff;
+  --edge: #8d9498;
+  --text: #20262a;
+  --muted: #424d53;
+  --mark: #626c72;
+  --accent: #9b3c05;
+  --light: #ffffffa8;
+  --glint: #ffffff24;
+  --shade: #20262a34;
+  --shadow: #20262a6e;
+  --well: #a4acb0;
+  --dial: radial-gradient(circle at 28% 24%, #fff, #e1e6e9 38%, #a4afb6 100%);
+  --cap: linear-gradient(135deg, #fff, #d5dcdf 44%, #a6afb4 55%, #e2e7e9);
+  --rocker: linear-gradient(150deg, #fff, #c6ced2 39%, #a8b2b6 52%, #e4e8e9);
+}
+alloy-knob, alloy-switch, alloy-fader { box-sizing: border-box; color: var(--text); font-family: var(--ui); display: grid; justify-items: center; gap: var(--alloy-gap, 7px); min-width: 0; margin: 0; align-content: start; }
+alloy-knob label, alloy-switch > span, alloy-fader label {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  font-weight: 650;
+}
+alloy-knob output, alloy-fader output {
+  font: 12px var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+alloy-knob output {
+  padding: 4px 12px;
+  border-radius: 3px;
+  background: var(--well);
+  box-shadow: inset 0 2px 4px var(--shade), 0 1px var(--light);
+}
+alloy-knob .face {
+  width: min(100%, var(--alloy-knob-size, var(--knob-size, 208px)));
+  aspect-ratio: 1;
+  position: relative;
+  border-radius: 50%;
+}
+alloy-knob[data-size="small"] { --knob-size: 120px; }
+alloy-knob[data-size="nano"] { --knob-size: 60px; }
+alloy-knob input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: ns-resize;
+  touch-action: none;
+}
+alloy-knob .ticks, alloy-knob .ticks i, alloy-knob .dial, alloy-knob .dial::before, alloy-knob .dial::after { position: absolute; }
+alloy-knob .ticks { inset: 1%; border-radius: 50%; }
+alloy-knob .ticks i { inset: 0; transform: rotate(var(--angle)); }
+alloy-knob .ticks i::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 4%;
+  margin-inline: auto;
+  background: var(--mark);
+}
+alloy-knob .ticks i:nth-child(5n + 1)::before { height: 6%; width: 2px; background: var(--muted); }
+alloy-knob .ticks i.lit::before {
+  background: var(--accent);
+  box-shadow: 0 0 3px var(--accent), 0 0 6px var(--accent);
+}
+alloy-knob .dial {
+  inset: 11%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--shade) 0 1deg, var(--glint) 1.5deg 3deg);
+  box-shadow:
+    inset 1px 1px 1px var(--light),
+    inset -1px -1px 2px var(--shadow),
+    0 0 0 1px var(--edge),
+    2px 3px 3px 1px var(--shadow),
+    21px 27px 14px 1px var(--shade),
+    39px 48px 24px 2px var(--shade);
+}
+alloy-knob .dial::before {
+  content: "";
+  inset: 9%;
+  border-radius: inherit;
+  background: repeating-radial-gradient(circle, transparent 0 .8px, var(--glint) 1px, transparent 1.6px), var(--dial);
+  box-shadow: inset 1px 1px 2px var(--light), inset -2px -2px 4px var(--shade), 0 0 0 1px var(--well);
+}
+alloy-knob .dial::after {
+  content: "";
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(var(--accent), var(--accent)) center 14% / 3% 18% no-repeat;
+  transform: rotate(calc(-135deg + var(--level, .5) * 270deg));
+}
+alloy-switch .rocker {
+  position: relative;
+  width: min(100%, var(--alloy-switch-width, 58px));
+  height: var(--alloy-switch-height, 112px);
+  padding: 3.5px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--well);
+  box-shadow: inset 0 3px 7px var(--shadow), 0 1px var(--light);
+  cursor: pointer;
+  perspective: 110px;
+}
+alloy-switch .rocker span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, var(--glint) 4px), var(--rocker);
+  transform: rotateX(-16deg);
+  box-shadow: inset 0 1px var(--light), 0 5px 5px var(--shadow);
+  transition: transform 130ms ease;
+}
+alloy-switch .rocker[aria-checked="true"] span { transform: rotateX(16deg); }
+alloy-switch .rocker span::after {
+  content: "";
+  position: absolute;
+  top: 16%;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--well);
+  box-shadow: inset 0 1px 2px var(--shadow);
+}
+alloy-switch .rocker[aria-checked="true"] span::after { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+alloy-switch .rocker:hover span { filter: brightness(1.12); }
+alloy-fader .face { position: relative; display: grid; place-items: center; width: 100%; }
+alloy-fader[data-axis="vertical"] .face { height: var(--alloy-fader-height, 150px); max-width: 60px; }
+alloy-fader[data-axis="vertical"] .face::after {
+  content: "";
+  position: absolute;
+  inset: 6px 0;
+  width: 7px;
+  margin-inline: auto;
+  border: 1px solid var(--rim);
+  border-radius: 2px;
+  box-sizing: border-box;
+  background: var(--well);
+  pointer-events: none;
+}
+alloy-fader .face::before {
+  content: "";
+  position: absolute;
+  inset: 13px 3px;
+  background: repeating-linear-gradient(to bottom, var(--mark) 0 1px, transparent 1px 12px);
+  pointer-events: none;
+}
+alloy-fader input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+alloy-fader[data-axis="vertical"] input {
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+alloy-fader:not([data-axis="vertical"]) .face {
+  height: 32px;
+  background: linear-gradient(var(--well), var(--well)) center / calc(100% - 14px) 5px no-repeat,
+              linear-gradient(var(--rim), var(--rim)) center / calc(100% - 12px) 7px no-repeat;
+}
+alloy-fader .fader-thumb {
+  --grip-width: 14px;
+  --grip-height: 29px;
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  width: var(--grip-width);
+  height: var(--grip-height);
+  top: 50%;
+  left: calc(var(--level) * (100% - var(--grip-width)));
+  transform: translateY(-50%);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  background: linear-gradient(var(--accent), var(--accent)) center / 1px 65% no-repeat, var(--cap);
+  box-shadow:
+    inset 1px 1px 1px var(--light),
+    inset -1px -1px 2px var(--shade),
+    0 0 0 1px var(--edge),
+    2px 3px 2px var(--shadow),
+    15px 21px 10px var(--shade),
+    27px 36px 16px 1px var(--shade);
+  cursor: grab;
+  touch-action: none;
+}
+alloy-fader[data-axis="vertical"] .fader-thumb {
+  --grip-width: min(100%, 34px);
+  --grip-height: 14px;
+  top: auto;
+  bottom: calc(var(--level) * (100% - var(--grip-height)));
+  left: 50%;
+  transform: translateX(-50%);
+  background-size: 67% 1px, auto;
+}
+alloy-fader .fader-thumb:hover { border-color: var(--mark); }
+alloy-fader .fader-thumb:active { cursor: grabbing; }
+alloy-fader[data-axis="horizontal"] .face::before {
+  inset: 4px 10px;
+  background: repeating-linear-gradient(to right, var(--mark) 0 1px, transparent 1px 12px);
+  mask-image: linear-gradient(to bottom, black 0 6px, transparent 6px 18px, black 18px);
+  -webkit-mask-image: linear-gradient(to bottom, black 0 6px, transparent 6px 18px, black 18px);
+}
+alloy-switch .rocker:focus-visible, alloy-knob .face:has(input:focus-visible), alloy-fader .face:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  alloy-switch .rocker span { transition: none; }
+}
+
+/* Apply to a control or to a container of controls. */
+[data-density="compact"] {
+  --alloy-gap: 4px;
+  --alloy-switch-width: 42px;
+  --alloy-switch-height: 64px;
+  --alloy-fader-height: 108px;
+}
+[data-density="compact"] alloy-knob:not([data-size]),
+alloy-knob[data-density="compact"]:not([data-size]) {
+  --knob-size: 96px;
+}
+:is(alloy-knob, alloy-fader)[data-readout="hidden"] output { display: none; }
+:is(alloy-knob, alloy-fader)[data-label="hidden"] label,
+alloy-switch[data-label="hidden"] > span {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Smooth surfaces and neutral indicators from the original samples. */
+[data-variant="simple"] {
+  --sample-face: radial-gradient(circle at 34% 26%, #4b525a, #3c4249 38%, #22262c 100%);
+  --sample-grip: linear-gradient(135deg, #464d55, #353a42 55%, #24282e);
+  --sample-indicator: #e4e8ec;
+}
+:root[data-theme="white"] [data-variant="simple"] {
+  --sample-face: radial-gradient(circle at 34% 26%, #fafbfc, #e2e6e9 55%, #b7c0c8);
+  --sample-grip: linear-gradient(135deg, #fafbfc, #e2e7eb 55%, #b4bec7);
+  --sample-indicator: #525d68;
+}
+[data-variant="simple"] alloy-knob .dial {
+  background: var(--sample-face);
+}
+[data-variant="simple"] alloy-knob .dial::before {
+  inset: 5%;
+  background: none;
+  box-shadow: inset 1px 1px 1px var(--light), inset -1px -1px 2px var(--shade), 0 0 0 1px var(--glint);
+}
+[data-variant="simple"] alloy-knob .dial::after {
+  background: linear-gradient(var(--sample-indicator), var(--sample-indicator)) center 12% / 5% 10% no-repeat;
+}
+[data-variant="simple"] alloy-switch .rocker {
+  width: min(100%, 68px);
+  height: 34px;
+  padding: 3px;
+  border-radius: 999px;
+}
+[data-variant="simple"] alloy-switch .rocker span {
+  width: 50%;
+  border-radius: 999px;
+  background: var(--sample-grip);
+  box-shadow: inset 0 1px var(--light), 0 2px 4px var(--shadow);
+  transform: none;
+}
+[data-variant="simple"] alloy-switch .rocker[aria-checked="true"] span {
+  transform: translateX(100%);
+}
+[data-variant="simple"] alloy-switch .rocker span::after { content: none; }
+[data-variant="simple"] alloy-fader .fader-thumb {
+  border-radius: 5px;
+  background: linear-gradient(var(--sample-indicator), var(--sample-indicator)) center / 4px 65% no-repeat, var(--sample-grip);
+}
+[data-variant="simple"] alloy-fader[data-axis="vertical"] .fader-thumb {
+  background-size: 68% 3px, auto;
+}
+
+[data-variant="synth"] {
+  --panel-top: #22282a;
+  --panel-bottom: #111415;
+  --edge: #080a0b;
+  --rim: #444b4d;
+  --well: #090c0c;
+  --text: #e1e2d3;
+  --muted: #b4bfba;
+  --mark: #909d99;
+  --accent: #ff9c40;
+  --dial: radial-gradient(circle at 28% 24%, #45494a, #202425 45%, #070808);
+  --cap: linear-gradient(135deg, #555c5e, #171a1b);
+  --rocker: linear-gradient(150deg, #454a4b, #111414 70%);
+  --wood: #472111;
+  --wood-edge: #7a4521;
+}
+:root[data-theme="white"] [data-variant="synth"] {
+  --panel-top: #f1efe7;
+  --panel-bottom: #d8d8cf;
+  --edge: #827e70;
+  --rim: #fffdf4;
+  --well: #adb3ad;
+  --text: #1d2524;
+  --muted: #46534e;
+  --mark: #616d67;
+  --accent: #a24800;
+  --dial: radial-gradient(circle at 28% 24%, #fbfaf5, #d3d7d1 45%, #9ca6a2);
+  --cap: linear-gradient(135deg, #f5f2e8, #aeb5ae);
+  --rocker: linear-gradient(150deg, #fbf9ee, #aab2ab 70%);
+}
+[data-variant="synth"] alloy-knob .dial::before { background: var(--dial); }
+[data-variant="synth"] alloy-fader .fader-thumb { border-radius: 1px; }
+
+alloy-push-button {
+  display: grid;
+  justify-items: center;
+}
+alloy-push-button button {
+  box-sizing: border-box;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 3px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  background: var(--cap);
+  color: var(--text);
+  font: 650 11px var(--ui);
+  text-shadow: 0 1px var(--shade);
+  box-shadow: inset 0 1px var(--light), 0 2px 0 var(--edge), 0 4px 6px var(--shade);
+  cursor: pointer;
+}
+alloy-push-button button:hover { border-color: var(--mark); }
+alloy-push-button button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+alloy-push-button button:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 4px var(--shade);
+}
+[data-variant="simple"] alloy-push-button button {
+  border-radius: 999px;
+  background: var(--sample-grip);
+}
+[data-variant="synth"] alloy-push-button button {
+  border-radius: 2px;
+  color: var(--accent);
+}
+
+alloy-push-button[data-shape="round"] button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+}
+alloy-push-button[data-shape="round"] button::before {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin: auto;
+  border-radius: 50%;
+  background: var(--muted);
+}
+alloy-push-button[data-shape="round"] button:active::before {
+  background: var(--accent);
+}
+
+/* A fixed bevel catches light without moving the grip or its hit target. */
+alloy-fader .fader-thumb::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--glint);
+  border-radius: inherit;
+  pointer-events: none;
+}
+alloy-fader .fader-thumb:hover::before,
+alloy-knob .face:hover .dial::before {
+  outline: 1px solid var(--glint);
+  outline-offset: -2px;
+}

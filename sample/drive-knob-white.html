@@ -1,0 +1,563 @@
+<!-- /drive-knob/standalone.html -->
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#e8eaec" />
+    <meta name="description" content="Three.js製のフォトリアルなアナログDRIVEノブ" />
+    <title>DRIVE — White / Standard / Three.js</title>
+    <style>
+/* /drive-knob/src/style.css */
+:root {
+  color-scheme: light;
+  font-family: Arial, Helvetica, sans-serif;
+  font-synthesis: none;
+  --panel: #eceef0;
+  --level: 35;
+  --angle: -43.4deg;
+}
+* { box-sizing: border-box; }
+html, body { width: 100%; min-height: 100%; margin: 0; }
+body { background: #dadddf; color: #212225; }
+.workspace {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 14px;
+  gap: 20px;
+}
+.panel {
+  width: min(450px, calc(100vw - 28px), calc((100dvh - 110px) * .8432056));
+  aspect-ratio: 242 / 287;
+  background: linear-gradient(138deg, #f0f2f3 0%, #edeff1 48%, #e5e7e9 100%);
+  box-shadow: 0 15px 55px #24293415, 0 2px 8px #252a3212, inset 0 0 1px #ffffff9e;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.stage { position: absolute; inset: 0; overflow: hidden; }
+.surface-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .55;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.055'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+.webgl { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.webgl canvas { display: block; width: 100%; height: 100%; }
+.drive-label {
+  position: absolute;
+  top: 84.3%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(19px, 8.6cqw, 40px);
+  font-weight: 800;
+  letter-spacing: .065em;
+  line-height: 1;
+  color: #1b1c20;
+  text-shadow: 0 .5px .6px #43474c22;
+  white-space: nowrap;
+}
+.panel { container-type: inline-size; }
+.dial-interaction {
+  position: absolute;
+  left: 50%;
+  top: 47.4%;
+  transform: translate(-50%, -50%);
+  width: 67%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: grab;
+  outline: none;
+  z-index: 5;
+  touch-action: none;
+}
+.dial-interaction:active { cursor: grabbing; }
+.dial-interaction:focus-visible { outline: 2px solid #606975ad; outline-offset: 8px; }
+.readout {
+  position: absolute;
+  z-index: 6;
+  bottom: 3.6%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(11px, 2.5cqw, 13px);
+  color: #545c66;
+  letter-spacing: .025em;
+  opacity: 0;
+  transition: opacity .28s ease;
+  pointer-events: none;
+}
+.stage.show-readout .readout { opacity: .75; }
+.usage {
+  margin: 0;
+  max-width: 100%;
+  color: #626972;
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: .02em;
+  text-align: center;
+}
+/* The printed dial marks are SVG, independent of camera/WebGL perspective. */
+.scale-ticks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 3;
+  overflow: visible;
+  pointer-events: none;
+}
+.scale-ticks line {
+  stroke: #666e75;
+  stroke-linecap: butt;
+  vector-effect: none;
+  transition: opacity .12s ease;
+}
+/* A complete zero-network visual fallback; replaced by 3D knob on load. */
+.fallback { position: absolute; inset: 0; z-index: 1; }
+.stage.webgl-ready .fallback { display: none; }
+.fallback-shadow {
+  position: absolute;
+  left: 50%; top: 47.4%;
+  width: 62%; aspect-ratio: 1;
+  transform: translate(-50%, -47%);
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 48%, #565c6330 67%, transparent 77%);
+  filter: blur(9px);
+}
+.fallback-knob {
+  position: absolute;
+  width: 56.5%; aspect-ratio: 1;
+  left: 50%; top: 47.4%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 34% 26%, #fbfcfc 0%, #f4f5f6 41%, #e7e9eb 76%, #cfd3d6 100%);
+  box-shadow:
+    3px 6px 6px #343b4244,
+    8px 11px 16px #464d543b,
+    -4px -5px 7px #ffffffd6,
+    inset -3px -4px 8px #b6bdc12b,
+    inset 3px 3px 5px #ffffffd9;
+  border: 1px solid #dfe3e5;
+}
+.fallback-knob::before {
+  content: ""; position: absolute; inset: 1.7%;
+  border-radius: 50%; border: 1px solid #ffffff7f;
+}
+.fallback-pointer { position: absolute; inset: 0; transform: rotate(var(--angle)); }
+.fallback-indicator {
+  position: absolute; width: 5.0%; height: 9%;
+  top: 10.5%; left: 47.5%;
+  border-radius: 35%;
+  background: linear-gradient(110deg, #2a2c2e, #17191b);
+  box-shadow: .4px .6px .4px #ffffff80;
+}
+@media(max-width: 420px) { .workspace { gap: 15px; } .usage { font-size: 10px; } }
+@media(prefers-reduced-motion: reduce) {
+  .readout, .scale-ticks line { transition: none; }
+}
+
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main class="workspace">
+      <section class="panel" aria-label="DRIVE volume control">
+        <div id="stage" class="stage">
+          <div class="surface-grain" aria-hidden="true"></div>
+          <div id="fallback" class="fallback" aria-hidden="true">
+            <div class="fallback-shadow"></div>
+            <div class="fallback-knob">
+              <div id="fallback-pointer" class="fallback-pointer">
+                <div class="fallback-indicator"></div>
+              </div>
+            </div>
+          </div>
+          <div id="webgl" class="webgl" aria-hidden="true"></div>
+          <!-- The scale uses shared, distortion-free SVG coordinates in BOTH modes. -->
+          <svg id="scale-ticks" class="scale-ticks" viewBox="0 0 450 533.6777" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+          <div class="drive-label" aria-hidden="true">DRIVE</div>
+          <div
+            id="dial-interaction"
+            class="dial-interaction"
+            role="slider"
+            aria-label="Drive level"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="35"
+            aria-valuetext="35 percent"
+            tabindex="0"
+          ></div>
+          <output id="readout" class="readout" aria-live="off">35%</output>
+        </div>
+      </section>
+      <p class="usage">ドラッグして回す · ホイールで微調整 · ← → キーでも操作</p>
+    </main>
+    <script>
+// /drive-knob/src/control.js
+(() => {
+  'use strict';
+
+  const START_DEG = -140;
+  const END_DEG = 140;
+  const INITIAL = 35;
+  const stage = document.querySelector('#stage');
+  const dial = document.querySelector('#dial-interaction');
+  const readout = document.querySelector('#readout');
+  const tickContainer = document.querySelector('#scale-ticks');
+  const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+  let value = INITIAL;
+  let dragging = false;
+  let hideTimer;
+  const tickEls = [];
+
+  // One scale for both WebGL and CSS fallback, on a fixed 450-unit square-based
+  // coordinate system. Concentric positions and orientation cannot be skewed by
+  // the orthographic camera or changes to the renderer's canvas pixel ratio.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const centerX = 225;
+  const centerY = 533.6777 * .474;
+  const numberOfSteps = 30;
+  for (let i = 0; i <= numberOfSteps; i++) {
+    const deg = START_DEG + (END_DEG - START_DEG) * i / numberOfSteps;
+    const angle = deg * Math.PI / 180;
+    const major = i % 5 === 0;
+    const innerRadius = major ? 170 : 171;
+    const outerRadius = major ? 183 : 181;
+    const el = document.createElementNS(SVG_NS, 'line');
+    el.setAttribute('x1', (centerX + Math.sin(angle) * innerRadius).toFixed(3));
+    el.setAttribute('y1', (centerY - Math.cos(angle) * innerRadius).toFixed(3));
+    el.setAttribute('x2', (centerX + Math.sin(angle) * outerRadius).toFixed(3));
+    el.setAttribute('y2', (centerY - Math.cos(angle) * outerRadius).toFixed(3));
+    el.setAttribute('stroke-width', major ? '4.3' : '3.6');
+    tickContainer.appendChild(el);
+    tickEls.push(el);
+  }
+
+  function setValue(next, show = true) {
+    value = clamp(Number(next) || 0, 0, 100);
+    const angle = START_DEG + (END_DEG - START_DEG) * value / 100;
+    stage.style.setProperty('--angle', `${angle}deg`);
+    readout.textContent = `${Math.round(value)}%`;
+    dial.setAttribute('aria-valuenow', String(Math.round(value)));
+    dial.setAttribute('aria-valuetext', `${Math.round(value)} percent`);
+    tickEls.forEach((t, i) => {
+      t.style.opacity = i / 30 <= value / 100 ? '.70' : '.20';
+    });
+    window.dispatchEvent(new CustomEvent('drivechange', {
+      detail: { value, normalized: value / 100, angleDeg: angle }
+    }));
+    if (show) {
+      stage.classList.add('show-readout');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        if (!dragging && !dial.matches(':focus-visible')) stage.classList.remove('show-readout');
+      }, 1250);
+    }
+  }
+
+  function valueAtPosition(clientX, clientY) {
+    const rect = stage.getBoundingClientRect();
+    const x = clientX - (rect.left + rect.width / 2);
+    const y = (rect.top + rect.height * .474) - clientY;
+    let angle = Math.atan2(x, y) * (180 / Math.PI);
+    // Avoid discontinuity when crossing the empty area at the bottom.
+    if (angle > END_DEG && angle < 180) angle = END_DEG;
+    if (angle < START_DEG && angle > -180) angle = START_DEG;
+    return (clamp(angle, START_DEG, END_DEG) - START_DEG) * 100 / (END_DEG - START_DEG);
+  }
+
+  dial.addEventListener('pointerdown', e => {
+    if (e.button !== 0 && e.pointerType !== 'touch') return;
+    e.preventDefault();
+    dragging = true;
+    dial.setPointerCapture(e.pointerId);
+    dial.focus({ preventScroll: true });
+    setValue(valueAtPosition(e.clientX, e.clientY));
+  });
+  dial.addEventListener('pointermove', e => {
+    if (dragging) setValue(valueAtPosition(e.clientX, e.clientY));
+  });
+  const end = () => { dragging = false; };
+  dial.addEventListener('pointerup', end);
+  dial.addEventListener('pointercancel', end);
+  dial.addEventListener('lostpointercapture', end);
+  dial.addEventListener('wheel', e => {
+    e.preventDefault();
+    setValue(value + (e.deltaY < 0 ? 2 : -2));
+  }, { passive: false });
+  dial.addEventListener('keydown', e => {
+    const keys = {
+      ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1,
+      PageUp: 10, PageDown: -10,
+    };
+    if (e.key in keys) {
+      e.preventDefault();
+      setValue(value + keys[e.key] * (e.shiftKey ? 5 : 1));
+    } else if (e.key === 'Home') {
+      e.preventDefault(); setValue(0);
+    } else if (e.key === 'End') {
+      e.preventDefault(); setValue(100);
+    }
+  });
+  dial.addEventListener('dblclick', () => setValue(INITIAL));
+
+  // Public API for audio engines and host applications:
+  // window.driveKnob.value, window.driveKnob.setValue(0..100)
+  window.driveKnob = {
+    get value() { return value; },
+    setValue: (next) => setValue(next),
+  };
+  setValue(INITIAL, false);
+})();
+
+    </script>
+    <script type="module">
+// /drive-knob/src/main.js
+import * as THREE from 'three';
+
+const stage = document.querySelector('#stage');
+const mount = document.querySelector('#webgl');
+const START = -140;
+const END = 140;
+const INITIAL_VALUE = window.driveKnob?.value ?? 35;
+const radians = deg => deg * Math.PI / 180;
+
+const renderer = new THREE.WebGLRenderer({
+  alpha: true,
+  antialias: true,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.25));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.55;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+mount.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, .1, 50);
+camera.position.set(0, 0, 12);
+camera.lookAt(0, 0, 0);
+
+const ambient = new THREE.HemisphereLight(0xffffff, 0xb7bec5, 2.6);
+scene.add(ambient);
+
+const key = new THREE.DirectionalLight(0xffffff, 4.3);
+key.position.set(-3.6, 5.8, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -3;
+key.shadow.camera.right = 3;
+key.shadow.camera.top = 3.5;
+key.shadow.camera.bottom = -3.5;
+key.shadow.camera.near = 0.5;
+key.shadow.camera.far = 25;
+key.shadow.bias = -.00008;
+key.shadow.normalBias = .008;
+key.shadow.radius = 3.0;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0xe0e8f2, 0.65);
+fill.position.set(4.5, -2.6, 2.4);
+scene.add(fill);
+
+// Shadows land on a transparent receiver, allowing the CSS front-panel texture
+// to show through without rendering a second opaque background in WebGL.
+const receiver = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 20),
+  new THREE.ShadowMaterial({ color: 0x4a5055, opacity: 0.26 }),
+);
+receiver.position.z = -.14;
+receiver.receiveShadow = true;
+scene.add(receiver);
+
+// Gentle contact shadow: radial falloff stays inside the gap to the scale.
+// The previous larger quad produced a visually distracting outer halo,
+// which could be mistaken for an extra circular graduated ring.
+const shadowCanvas = document.createElement('canvas');
+shadowCanvas.width = 256;
+shadowCanvas.height = 256;
+const sx = shadowCanvas.getContext('2d');
+const grad = sx.createRadialGradient(128, 128, 46, 128, 128, 126);
+grad.addColorStop(0, 'rgba(31,34,39,.11)');
+grad.addColorStop(.45, 'rgba(32,35,40,.095)');
+grad.addColorStop(.78, 'rgba(33,37,42,.035)');
+grad.addColorStop(1, 'rgba(30,34,38,0)');
+sx.fillStyle = grad;
+sx.fillRect(0, 0, 256, 256);
+const contactTexture = new THREE.CanvasTexture(shadowCanvas);
+const contact = new THREE.Mesh(
+  new THREE.PlaneGeometry(2.52, 2.52),
+  new THREE.MeshBasicMaterial({
+    map: contactTexture,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
+    opacity: .80,
+  }),
+);
+contact.position.set(.035, -.025, -.12);
+scene.add(contact);
+
+const dial = new THREE.Group();
+dial.position.set(0, .12, 0);
+scene.add(dial);
+
+// Turned physical profile: gently domed top, rounded shoulder, and dark sidewall.
+// LatheGeometry builds smooth highlight transitions impossible to fake with a flat disc.
+const points = [
+  [0.00, .245], [.15, .245], [.44, .242], [.69, .234],
+  [.82, .222], [.90, .199], [.968, .143],
+  [1.006, .080], [1.026, .006], [1.022, -.042],
+  [1.007, -.090], [.973, -.129], [.932, -.147],
+  [.89, -.152], [0, -.152],
+].reverse().map(([radius, height]) => new THREE.Vector2(radius, height));
+const bodyGeometry = new THREE.LatheGeometry(points, 192, 0, Math.PI * 2);
+bodyGeometry.rotateX(Math.PI / 2);
+
+const bodyMaterial = new THREE.MeshPhysicalMaterial({
+  color: 0xedf0f1,
+  roughness: .78,
+  metalness: .02,
+  clearcoat: .22,
+  clearcoatRoughness: .72,
+});
+const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+body.position.z = .10;
+body.castShadow = true;
+body.receiveShadow = true;
+dial.add(body);
+
+// A very fine rolled edge catches a small amount of directional light.
+const edge = new THREE.Mesh(
+  new THREE.TorusGeometry(.974, .011, 7, 192),
+  new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: .7 }),
+);
+edge.position.z = .245;
+dial.add(edge);
+
+// Subtle seam behind the rotating knob.
+const seam = new THREE.Mesh(
+  new THREE.TorusGeometry(1.023, .013, 8, 192),
+  new THREE.MeshBasicMaterial({ color: 0x777e82, transparent: true, opacity: .13, depthWrite: false }),
+);
+seam.position.z = -.067;
+dial.add(seam);
+
+// Black indicator: a tiny rounded, inset-looking bar on the face.
+const pointerShape = new THREE.Shape();
+const w = .052;
+const h = .135;
+const rr = .024;
+const x = -w / 2;
+const y = -h / 2;
+pointerShape.moveTo(x + rr, y);
+pointerShape.lineTo(x + w - rr, y);
+pointerShape.quadraticCurveTo(x + w, y, x + w, y + rr);
+pointerShape.lineTo(x + w, y + h - rr);
+pointerShape.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+pointerShape.lineTo(x + rr, y + h);
+pointerShape.quadraticCurveTo(x, y + h, x, y + h - rr);
+pointerShape.lineTo(x, y + rr);
+pointerShape.quadraticCurveTo(x, y, x + rr, y);
+const pointerGeo = new THREE.ExtrudeGeometry(pointerShape, {
+  depth: .003, bevelEnabled: true, bevelThickness: .004,
+  bevelSize: .004, bevelSegments: 2, curveSegments: 5,
+});
+const pointer = new THREE.Mesh(
+  pointerGeo,
+  new THREE.MeshStandardMaterial({ color: 0x25272a, roughness: .89, metalness: 0 }),
+);
+pointer.position.set(0, .835, .338);
+pointer.castShadow = false;
+const rotating = new THREE.Group();
+rotating.add(pointer);
+dial.add(rotating);
+
+// Subtle visible face micro-texture, fixed relative to the physical knob.
+const noiseCanvas = document.createElement('canvas');
+noiseCanvas.width = 256;
+noiseCanvas.height = 256;
+const nc = noiseCanvas.getContext('2d');
+const pixels = nc.createImageData(256, 256);
+for (let i = 0; i < pixels.data.length; i += 4) {
+  const n = Math.floor(Math.random() * 256);
+  pixels.data[i] = n; pixels.data[i + 1] = n;
+  pixels.data[i + 2] = n; pixels.data[i + 3] = 255;
+}
+nc.putImageData(pixels, 0, 0);
+const bump = new THREE.CanvasTexture(noiseCanvas);
+bump.wrapS = THREE.RepeatWrapping;
+bump.wrapT = THREE.RepeatWrapping;
+bump.repeat.set(3, 3);
+bodyMaterial.bumpMap = bump;
+bodyMaterial.bumpScale = .0015;
+bodyMaterial.needsUpdate = true;
+
+// The graduated marks live in the common SVG overlay (see control.js).
+// Keeping them out of the 3D scene prevents projection / WebGL differences
+// from deforming the scale while the knob itself remains fully 3D.
+
+let currentValue = INITIAL_VALUE;
+function updateLevel(v) {
+  currentValue = Math.min(100, Math.max(0, Number(v) || 0));
+  const deg = START + (END - START) * currentValue / 100;
+  rotating.rotation.z = -radians(deg);
+
+}
+updateLevel(currentValue);
+window.addEventListener('drivechange', e => updateLevel(e.detail.value));
+
+function resize() {
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+  if (width === 0 || height === 0) return;
+  renderer.setSize(width, height, false);
+  const visibleHeight = 4.40;
+  const halfH = visibleHeight / 2;
+  const halfW = visibleHeight * (width / height) / 2;
+  camera.left = -halfW;
+  camera.right = halfW;
+  camera.top = halfH;
+  camera.bottom = -halfH;
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+}
+
+const observer = new ResizeObserver(resize);
+observer.observe(stage);
+resize();
+stage.classList.add('webgl-ready');
+
+// No continuous animation loop: only render when the hardware dial changes.
+// This keeps CPU/GPU usage very low in an audio plugin or desktop app.
+window.addEventListener('drivechange', () => renderer.render(scene, camera));
+window.addEventListener('pagehide', () => {
+  observer.disconnect();
+  renderer.dispose();
+}, { once: true });
+
+    </script>
+  </body>
+</html>

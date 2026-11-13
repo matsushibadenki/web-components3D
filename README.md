@@ -1,5 +1,7 @@
 # Alloy Interface Kit
 
+<img src="docs/images/web-components3D-image1.png">
+
 `sample/` の DRIVE、ADV、EQ をもとにした Tauri 2 + Rust 用の操作部品です。黒と白の金属仕上げ、英語・日本語・简体中文のデモを収録しています。
 
 ## 起動

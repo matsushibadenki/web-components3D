@@ -1,4 +1,4 @@
-# Alloy Interface Kit
+# web-components3D Interface Kit
 
 <img src="docs/images/web-components3D-image1.png">
 
